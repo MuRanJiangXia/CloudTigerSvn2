@@ -1,0 +1,388 @@
+//
+//  RegisterShopCell2.m
+//  CloudTiger
+//
+//  Created by cyan on 16/12/8.
+//  Copyright © 2016年 cyan. All rights reserved.
+//
+
+#import "RegisterShopCell2.h"
+#import "CyanAddressView.h"
+@interface RegisterShopCell2 ()<UITextFieldDelegate>{
+    
+    NSInteger _textTag ;
+    
+    NSMutableArray *_adressArr;
+    
+}
+
+
+@end
+
+static NSInteger baseTag  = 20161208;
+
+@implementation RegisterShopCell2
+
+-(instancetype)initWithFrame:(CGRect)frame{
+    self =[super initWithFrame:frame];
+    if (self) {
+        
+        [self createUI];
+    }
+    return self;
+}
+- (void)awakeFromNib {
+    [super awakeFromNib];
+    [self createUI];
+    
+}
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (self) {
+        [self createUI];
+        
+        
+    }
+    return self;
+}
+
+
+-(void)setAddressID:(NSString *)addressID{
+    
+    
+    _addressID = addressID;
+    
+    /**
+     
+     如果传过来 addressid 需要网络请求一下
+     */
+    if (self.addressID.length) {
+        //判断地区是否全部选择完毕
+        NSArray *arr = [self.addressID componentsSeparatedByString:@"|"];
+        NSLog(@"arr :%@",arr);
+        
+        for (NSInteger index = 0; index < arr.count; index ++) {
+            [self getAddressBy:index + baseTag];
+        }
+
+        
+    }
+    
+}
+
+
+/**
+ 账户信息中 已经选择过地址了
+ */
+-(void)getAddressBy:(NSInteger )chooseIndex{
+    
+    
+    UITextField *textF = [self viewWithTag:chooseIndex];
+    NSArray *arr = [self.addressID componentsSeparatedByString:@"|"];
+    NSString *chooseID  = arr[chooseIndex - baseTag];
+    
+
+    
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    //申明请求的数据是json类型
+    manager.requestSerializer=[AFJSONRequestSerializer serializer];
+    //    manager.requestSerializer = [AFHTTPRequestSerializer serializer];
+    manager.responseSerializer =  [AFJSONResponseSerializer serializer];
+    //设置请求头 压缩
+    [manager.requestSerializer setValue:@"gzip" forHTTPHeaderField:@"Accept-Encoding"];
+    [manager.requestSerializer setTimeoutInterval:15];
+    NSDictionary *parameters = [[NSDictionary alloc]init];
+    
+    if (chooseIndex == baseTag) {
+     parameters  = @{
+                         @"Parent_id":@"0"
+                         
+                         };
+        
+    }else{
+        NSString *topId = arr[chooseIndex -baseTag -1];
+        parameters = @{
+                             @"Parent_id":topId
+                             
+                             };
+
+    }
+
+    
+    
+    [manager POST:[BaseUrl stringByAppendingString:AddresChooseAreaUrl] parameters:parameters progress:^(NSProgress * _Nonnull uploadProgress) {
+        ;
+    } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        
+        
+//        NSLog(@"responseObject : %@",responseObject);
+        /**
+         选取选中的地址
+         */
+        NSInteger proIndex = [chooseID integerValue] ;
+        //谓词查找选择中的想
+        NSString  *preStr = [NSString stringWithFormat:@"SysNo == %ld",proIndex];
+        
+        NSPredicate * filterPredicate = [NSPredicate predicateWithFormat:preStr];
+        NSArray * filter = [responseObject filteredArrayUsingPredicate:filterPredicate];
+        
+//        NSLog(@"%@",filter);
+        NSDictionary *pro = filter[0];
+        
+        textF.text=[NSString stringWithFormat:@"%@",pro[@"AddressName"]];
+        NSString  *provId = pro[@"SysNo"];
+//        NSLog(@"provId : %@",provId);
+        
+//        NSLog(@"tag : %ld",textF.tag);
+        
+        
+        [_adressArr replaceObjectAtIndex:textF.tag - baseTag withObject:pro];
+        
+        
+//        NSLog(@"%@",_adressArr);
+        
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        ;
+    }];
+    
+    
+}
+
+-(void)createUI{
+    
+    
+    for (NSInteger index = 0; index < 3; index ++) {
+        
+      UILabel  *titleLab = [[UILabel alloc]initWithFrame:CGRectMake(15, index *60, 14.6*4, 60)];
+        //        titleLab.backgroundColor = [UIColor redColor];
+        titleLab.text = @"订单号";
+        titleLab.textColor = GrayColor;
+        titleLab.textAlignment = NSTextAlignmentLeft;
+        titleLab.font = [UIFont systemFontOfSize:14];
+        [self.contentView addSubview:titleLab];
+        
+      UITextField  *cellTextField = [[UITextField alloc]initWithFrame:CGRectMake(titleLab.right  , titleLab.top, MainScreenWidth - 15 -10 -titleLab.right , 60)];
+        cellTextField.placeholder = @"输入。。";
+        //    [cellTextField setValue:[UIColor redColor]forKeyPath:@"_placeholderLabel.textColor"];
+        [cellTextField setValue:[UIFont boldSystemFontOfSize:14] forKeyPath:@"_placeholderLabel.font"];
+        //        cellTextField.backgroundColor = [UIColor cyanColor];
+        cellTextField.textColor = [UIColor blackColor];
+        cellTextField.clearButtonMode = UITextFieldViewModeNever;
+        cellTextField.delegate = self;
+        cellTextField.textAlignment = NSTextAlignmentRight;
+        cellTextField.keyboardType = UIKeyboardTypeASCIICapable;
+        
+        // UITextField关闭系统自动联想和首字母大写功能
+        [cellTextField setAutocorrectionType:UITextAutocorrectionTypeNo];
+        [cellTextField setAutocapitalizationType:UITextAutocapitalizationTypeNone];
+        
+        
+        [self.contentView addSubview:cellTextField];
+        
+        
+        
+        cellTextField.tag  = baseTag + index;
+        if (index == 0) {
+            titleLab.text = @"省";
+            cellTextField.placeholder = @"选择省";
+
+        }else if (index == 1){
+            titleLab.text = @"市";
+            cellTextField.placeholder = @"选择市";
+
+
+        }else{
+            titleLab.text = @"区";
+            cellTextField.placeholder = @"选择区";
+
+            
+        }
+        
+        
+        UIView *lineView = [[UIView alloc]initWithFrame:CGRectMake(0, titleLab.bottom -1, MainScreenWidth, 1)];
+        lineView.backgroundColor = PaleColor;
+        [self.contentView addSubview:lineView];
+    }
+    
+
+    
+    
+    
+    /**
+     AddressName 地区名字  SysNo
+     SysNo 地区主键
+     Parent_id 上级主键
+     Priority 同地区主键
+     */
+    //
+    _adressArr = [@[
+                    
+                    @{
+                        @"AddressName":@"",
+                        @"SysNo":@"",
+                        @"Priority":@"",
+                        @"Parent_id":@"",
+                        
+                        },
+                    @{
+                        @"AddressName":@"",
+                        @"SysNo":@"",
+                        @"Priority":@"",
+                        @"Parent_id":@"",
+                        },
+                    @{
+                        @"AddressName":@"",
+                        @"SysNo":@"",
+                        @"Priority":@"",
+                        @"Parent_id":@"",
+                        },
+                    
+                    ] mutableCopy];
+        
+}
+//选择其他城市的时候要清空 处理
+/**
+ 选择省 的时候 市，区 清空  ，选择市的时候 区清空
+ */
+-(void)reloadTextByTag:(NSInteger )index{
+    NSDictionary *dic =    @{
+                             @"AddressName":@"",
+                             @"SysNo":@"",
+                             @"Priority":@"",
+                             @"Parent_id":@"",
+                             };
+    if (index == baseTag) {
+        UITextField *text = (UITextField *)[self viewWithTag:baseTag +1];
+        text.text = @"";
+        UITextField *text2 = (UITextField *)[self viewWithTag:baseTag +2];
+        text2.text = @"";
+        
+        [_adressArr replaceObjectAtIndex:1 withObject:dic];
+        [_adressArr replaceObjectAtIndex:2 withObject:dic];
+        
+    }
+    
+    if (index == baseTag +1) {
+        UITextField *text = (UITextField *)[self viewWithTag:baseTag +2];
+        text.text = @"";
+        [_adressArr replaceObjectAtIndex:2 withObject:dic];
+        
+    }
+    
+    
+    NSLog(@"清空后 ： _adressArr : %@",_adressArr);
+    
+}
+
+-(BOOL)textFieldShouldBeginEditing:(UITextField *)textField{
+    
+    // 第一个是传@“0” 获取省；保存 两个id  一个是 省，一个是市 用来选择，
+    
+    NSString *choosId ;
+    if (textField.tag == baseTag ) {//省
+        choosId   = @"0";
+        
+    }else if (textField.tag == baseTag + 1){//市
+        //先获取省 id 如果没有 不网络请求了
+        NSDictionary *dic = _adressArr[0];
+        NSString *addressId = [NSString stringWithFormat:@"%@", dic[@"SysNo"]];
+        
+        if (addressId.length) {
+            //传上级的id
+            choosId   = addressId;
+        }else{
+            NSLog(@"请先选择省。。。");
+            [MessageView showMessage:@"请先选择省"];
+            return NO;
+            
+        }
+        
+    }else{//区
+        //先获取市 id 如果没有 不网络请求了
+        NSDictionary *dic =_adressArr[1];
+        NSString *addressId = [NSString stringWithFormat:@"%@", dic[@"SysNo"]];
+        
+        if (addressId.length) {
+            //传上级的id
+            choosId   = addressId;
+            
+        }else{
+            
+            NSLog(@"请先选择市。。。");
+            [MessageView showMessage:@"请先选择市"];
+            return NO;
+        }
+    }
+    
+    
+    NSDictionary *current = _adressArr[textField.tag -baseTag];
+    
+    CyanAddressView *vieew = [CyanAddressView showWith:textField ByChooseId:choosId WithCurrentDic:current Complete:^(NSDictionary *pro, NSDictionary *city, NSDictionary *county) {
+        
+        
+        
+        //清空处理
+        if (textField.tag == baseTag || textField.tag == baseTag + 1) {
+            
+            NSDictionary *dic = _adressArr[textField.tag -baseTag];
+            
+            
+            NSString *addressId = [NSString stringWithFormat:@"%@", dic[@"SysNo"]];
+            
+            //获取传过来的  id
+            NSString *proId = [NSString stringWithFormat:@"%@",pro[@"SysNo"]];
+            
+            //选择相同的时候不做清空处理
+            if (addressId.length != 0 && ![proId isEqualToString:addressId]) {
+                
+                [self reloadTextByTag:textField.tag];
+            }
+        }
+        
+        textField.text=[NSString stringWithFormat:@"%@",pro[@"AddressName"]];
+        NSString  *provId = pro[@"SysNo"];
+        NSLog(@"provId : %@",provId);
+        [_adressArr replaceObjectAtIndex:textField.tag - baseTag withObject:pro];
+        
+        //传至
+        if ([self.delegete respondsToSelector:@selector(messWithAdress:ByIndexPath:)]) {
+            [self.delegete messWithAdress:[_adressArr copy] ByIndexPath:self.indexPath];
+        }
+        
+        
+        
+        
+    } ];
+    
+    
+    textField.inputView = vieew;
+    
+    
+    
+    
+    return YES;
+}
+
+#pragma mark  UITextFieldDelegate
+-(BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string{
+    
+    if ([string isEqualToString:@"\n"]) {
+        [textField resignFirstResponder];
+    }
+    
+    
+    
+    return YES;
+}
+-(BOOL)textFieldShouldEndEditing:(UITextField *)textField{
+//    if ([self.delegete respondsToSelector:@selector(messWithText:ByIndexPath:)]) {
+//        [self.delegete messWithText:cellTextField.text ByIndexPath:self.indexPath];
+//    }
+    return YES;
+    
+}
+
+
+    
+@end

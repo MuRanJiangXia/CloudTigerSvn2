@@ -1,0 +1,273 @@
+//
+//  CodePostViewController.m
+//  CloudTiger
+//
+//  Created by cyan on 16/9/23.
+//  Copyright © 2016年 cyan. All rights reserved.
+//
+
+#import "CodePostViewController.h"
+
+@interface CodePostViewController (){
+    
+    BOOL _isWXPay;
+    UIImageView *_payImageV;
+    UILabel *_payLab;
+    
+    NSTimer *_timer;
+    NSString *_state;//支付状态
+
+}
+@property(nonatomic,assign) NSInteger index ;
+
+@end
+
+@implementation CodePostViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"支付请求";
+    self.view.backgroundColor = [UIColor whiteColor];
+    
+//    pay_wait
+    
+    _payImageV = [[UIImageView alloc]initWithFrame:CGRectMake((MainScreenWidth - 130)/2.0, 100, 130, 130)];
+//    _payImageV.backgroundColor = [UIColor yellowColor];
+    _payImageV.image = [UIImage imageNamed:@"pay_success"];
+    _payImageV.hidden = YES;
+    [self.view addSubview:_payImageV];
+
+    
+    _payLab = [[UILabel alloc]initWithFrame:CGRectMake(0, _payImageV.bottom + 20, MainScreenWidth, 50)];
+//    _payLab.backgroundColor = [UIColor redColor];
+    _payLab.text = @"支付成功";
+    _payLab.textColor = UIColorFromRGB(0x8bc34a, 1);
+    _payLab.textAlignment = NSTextAlignmentCenter;
+    _payLab.hidden = YES;
+    _payLab.font = [UIFont systemFontOfSize:40 weight:2];
+    [self.view addSubview:_payLab];
+    
+    [self postPAY:nil];
+    
+    NSLog(@"codeStr : %@",self.codeStr);
+
+}
+
+-(void)backAction{
+    
+    if ([_state isEqualToString:@"success"]||[_state isEqualToString:@"fail"]) {
+        [super backAction];
+    }
+}
+
+/**清理定时器*/
+-(void)cleanTimer{
+    [_timer invalidate];
+    _timer = nil;
+//    //60 18
+//    self.index = 60;
+    
+}
+#pragma mark timer
+-(void)timerAction:(NSTimer *)timer{
+    
+    NSLog(@"%ld",_index);
+//    _timeLabel.text = [NSString stringWithFormat:@"%lds后获取",_index];
+    NSString *time = [NSString stringWithFormat:@"%ld",_index--];
+    [self reloadPayViewByTime:time];
+    if (_index < 0) {
+        
+        //超时了  取消订单
+        /**
+         超时了 ，并且不是 订单成功状态
+         清空 二维码图片 提示超时
+         */
+   
+        [timer invalidate];
+        timer = nil;
+        
+    }
+}
+//开启定时器
+-(void)creatTimer{
+    //60 18
+    self.index = 60;
+    _timer = [NSTimer timerWithTimeInterval:1 target:self selector:@selector(timerAction:) userInfo:nil repeats:YES];
+    [[NSRunLoop mainRunLoop]addTimer:_timer forMode:NSDefaultRunLoopMode];
+    [_timer fire];
+    
+}
+
+//支付等待中
+-(void)reloadPayViewByTime:(NSString *)time{
+    
+    _payLab.hidden = NO;
+    _payImageV.hidden = NO;
+    _payLab.textColor = UIColorFromRGB(0x8bc34a, 1);
+    _payLab.text = [NSString stringWithFormat:@"%@s",time];
+    _payImageV.image = [UIImage imageNamed:@"pay_wait"];
+    
+}
+//支付结果
+-(void)reloadPayView:(BOOL)isSuccess{
+    
+    _payLab.hidden = NO;
+    _payImageV.hidden = NO;
+    if (isSuccess) {
+        _payLab.textColor = UIColorFromRGB(0x8bc34a, 1);
+
+        _payLab.text = @"支付成功";
+        _payImageV.image = [UIImage imageNamed:@"pay_success"];
+
+        
+    }else{
+        _payLab.textColor = UIColorFromRGB(0xfc771d, 1);
+        _payLab.text = @"支付失败";
+        _payImageV.image = [UIImage imageNamed:@"pay_fail"];
+        
+    }
+}
+-(void)backVC:(UIButton *)btn{
+    [self.navigationController popViewControllerAnimated:YES];
+    
+//    [self dismissViewControllerAnimated:YES completion:^{
+//        
+//    }];
+    
+}
+-(void)postPAY:(UIButton *)btn{
+    
+    
+    if (self.codeStr.length <= 2) {
+        NSLog(@"没有code二维码");
+        
+        return;
+    }else{
+        NSRange range = {0,2};
+        NSString *subCode = [self.codeStr substringWithRange:range];
+        if ([subCode isEqualToString:@"13"]) {//微信
+        
+            _isWXPay = YES;
+        }
+        else if ([subCode isEqualToString:@"28"]){//支付宝
+            
+            _isWXPay = NO;
+ 
+        }else {
+            
+            _state = @"fail";
+
+            [self reloadPayView:NO];
+
+            [self alterWith:[NSString stringWithFormat:@"%@,不是支付二维码",self.codeStr]];
+            
+            return;
+        }
+       
+    }
+    
+    
+    
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    //申明请求的数据是json类型
+    manager.requestSerializer=[AFJSONRequestSerializer serializer];
+    //    manager.requestSerializer = [AFHTTPRequestSerializer serializer];
+    manager.responseSerializer =  [AFJSONResponseSerializer serializer];
+    //设置请求头 压缩
+    [manager.requestSerializer setValue:@"gzip" forHTTPHeaderField:@"Accept-Encoding"];
+    [manager.requestSerializer setTimeoutInterval:60];
+    
+
+    
+    CyanManager  *cyanManager = [CyanManager shareSingleTon];
+    NSString *shopNane = cyanManager.shopName;
+//
+  
+    NSString *fee =  [CyTools  interByStr:self.moneyStr];
+    
+    NSString *url ;
+    
+    NSDictionary *parameters;
+    NSLog(@"_isWXPay : %d",_isWXPay);
+    if (_isWXPay) {
+        //微信
+        url =[BaseUrl stringByAppendingString:WXCodePayUrl];
+        parameters =         @{
+                               @"ProductTitle":shopNane,
+                               @"Total_fee":fee,
+                               @"auth_code":self.codeStr,
+                               @"POSID":@"11",
+                               @"CustomerSysNo":cyanManager.shopSysNo,
+                               @"Old_SysNo":cyanManager.sysNO
+                               };
+
+        
+    }else{
+//        支付宝
+        url =[BaseUrl stringByAppendingString:AliCodePayUrl];
+        parameters =         @{
+                               @"ProductTitle":shopNane,
+                               @"Total_amount":fee,
+                               @"Auth_code":self.codeStr,
+                               @"CustomerSysNo":cyanManager.shopSysNo,
+                               @"Old_SysNo":cyanManager.sysNO
+                               };
+    }
+    
+//    [self showSVPByStatus:@"支付中。。"];
+    
+    //先清空一下
+    [self cleanTimer];
+
+    //开启时间
+    [self creatTimer];
+    
+    [manager POST:url parameters:parameters progress:^(NSProgress * _Nonnull uploadProgress) {
+        
+    } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+//        [self dismissSVP];
+        NSLog(@"responseObject :%@",responseObject);
+        
+        NSInteger Code = [responseObject[@"Code"] integerValue];
+        NSString *Description = responseObject[@"Description"];
+        
+        if (Code == 0) {
+            NSLog(@"支付成功");
+            [self cleanTimer];
+            [self alterWith:@"支付成功"];
+            [self reloadPayView:YES];
+            _state = @"success";
+        }else{
+            [self cleanTimer];
+
+            [self reloadPayView:NO];
+            _state = @"fail";
+            [self alterWith:Description];
+            
+        }
+        
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+//        [self dismissSVP];
+        _state = @"fail";
+
+        
+        [self cleanTimer];
+        [self reloadPayView:NO];
+        _state = @"fail";
+        [self alterWith:@"请求失败"];
+
+        NSString *errorStr = [NSString stringWithFormat:@"%@",error];
+//        [self showSVPErrorStatus:errorStr];
+        
+        if ( error.code == -1001) {
+            NSLog(@"网络请求超时");
+        }
+       
+        NSLog(@"error :%@",error);
+
+    }];
+    
+}
+
+
+@end

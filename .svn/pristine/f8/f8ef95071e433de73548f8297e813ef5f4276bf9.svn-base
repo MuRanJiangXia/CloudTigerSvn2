@@ -1,0 +1,92 @@
+//
+//  AssignStaffCell.m
+//  CloudTiger
+//
+//  Created by cyan on 16/12/2.
+//  Copyright © 2016年 cyan. All rights reserved.
+//
+
+#import "AssignStaffCell.h"
+
+@implementation AssignStaffCell{
+    
+    UILabel *_firstLab;
+    
+    UISwitch *_chooseView;
+}
+
+-(instancetype)initWithFrame:(CGRect)frame{
+    self =[super initWithFrame:frame];
+    if (self) {
+        
+        [self createUI];
+    }
+    return self;
+}
+- (void)awakeFromNib {
+    [super awakeFromNib];
+    [self createUI];
+    
+}
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (self) {
+        [self createUI];
+        
+        
+    }
+    return self;
+}
+
+-(void)setAssignStaffModel:(AssignStaffModel *)assignStaffModel{
+    
+    if (_assignStaffModel != assignStaffModel) {
+        _assignStaffModel = assignStaffModel;
+        
+        [self setNeedsLayout];
+    }
+}
+
+-(void)layoutSubviews{
+    
+    [super layoutSubviews];
+    
+    _firstLab.text = [NSString stringWithFormat:@"%@",_assignStaffModel.DisplayName];
+
+    _chooseView.on= _assignStaffModel.isChoose;
+}
+
+-(void)createUI{
+    
+    _firstLab  = [[UILabel alloc]initWithFrame:CGRectMake(0, 0, 100, 50)];
+    _firstLab.backgroundColor = [UIColor redColor];
+    _firstLab.text = @"label";
+    _firstLab.textColor = [UIColor yellowColor];
+    _firstLab.textAlignment = NSTextAlignmentCenter;
+    [self.contentView addSubview:_firstLab];
+    
+    _chooseView = [[UISwitch alloc]initWithFrame:CGRectMake(_firstLab.right + 10, 0, 100, 50)];
+    _chooseView.on = YES;
+    
+    [self.contentView addSubview:_chooseView];
+    
+    [_chooseView addTarget:self action:@selector(switchAction:) forControlEvents:UIControlEventValueChanged];
+    
+    
+    UIView *view = [[UIView alloc]initWithFrame:CGRectMake(0, _firstLab.bottom -1, MainScreenWidth, 1)];
+    view.backgroundColor = [UIColor yellowColor];
+    [self.contentView addSubview:view];
+    
+
+}
+
+-(void)switchAction:(UISwitch *)switchView{
+    
+    if ([self.delegate respondsToSelector:@selector(switchAction:byIndex:)]) {
+        [self.delegate switchAction:switchView.isOn byIndex:_indexPath];
+    }
+    NSLog(@"switchView.isOn : %d",switchView.isOn);
+}
+
+@end

@@ -1,0 +1,42 @@
+//
+//  CyanLoadFooterView.m
+//  CloudTiger
+//
+//  Created by cyan on 16/10/18.
+//  Copyright © 2016年 cyan. All rights reserved.
+//
+
+#import "CyanLoadFooterView.h"
+
+@implementation CyanLoadFooterView
+
+-(instancetype)initWithReuseIdentifier:(NSString *)reuseIdentifier{
+    self = [super initWithReuseIdentifier:reuseIdentifier];
+    if (self) {
+        [self createUI];
+    }
+    return self;
+}
+-(instancetype)initWithFrame:(CGRect)frame{
+    self =[super initWithFrame:frame];
+    if (self) {
+        
+        [self createUI];
+    }
+    return self;
+}
+-(void)createUI{
+
+
+    UILabel *label  = [[UILabel alloc]initWithFrame:CGRectMake(0, 0, MainScreenWidth, 40)];
+    label.backgroundColor = [UIColor redColor];
+    label.text = @"已经全部加载完毕";
+    label.textColor = [UIColor yellowColor];
+    label.textAlignment = NSTextAlignmentCenter;
+    label.font = [UIFont systemFontOfSize:14];
+    [self.contentView addSubview:label];
+    
+    
+    
+}
+@end

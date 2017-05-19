@@ -1,0 +1,27 @@
+//
+//  PositionViewController.m
+//  CloudTiger
+//
+//  Created by cyan on 16/9/6.
+//  Copyright © 2016年 cyan. All rights reserved.
+//
+
+#import "PositionViewController.h"
+
+@interface PositionViewController ()
+
+@end
+
+@implementation PositionViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"位置";
+//    self.view.backgroundColor = [UIColor blueColor];
+    self.view.backgroundColor = UIColorFromRGB(0xF6F5F9, 1);
+
+
+}
+
+
+@end

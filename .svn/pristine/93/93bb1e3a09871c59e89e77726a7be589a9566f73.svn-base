@@ -1,0 +1,538 @@
+//
+//  StaffHomeViewController.m
+//  CloudTiger
+//
+//  Created by cyan on 16/9/7.
+//  Copyright © 2016年 cyan. All rights reserved.
+//
+
+#import "StaffHomeViewController.h"
+#import "StaffHomeCell.h"
+#import "StaffHomeCell2.h"
+#import "StaffHomeTopView.h"
+#import "StaffHomeFooterView.h"
+#import "StaffModel.h"
+#import "QueryViewController.h"
+#import "QueryWXOrderViewController.h"
+#import "QueryAliOrderViewController.h"
+#import "RefundViewController.h"
+#import "RefundQueryViewController.h"
+#import "CodeViewController.h"
+#import "ShopQueryViewController.h"
+#import "LoginViewController.h"
+#import "SYQRCodeViewController.h"
+#import "CodePostViewController.h"
+#import "CodePayViewController.h"
+#import "StaffCodeViewController.h"
+#import "QueryRateViewController.h"
+
+
+@interface StaffHomeViewController ()<UICollectionViewDataSource,UICollectionViewDelegate,ChooseHeaderDelegate>{
+    
+    NSMutableArray *_staffCellArr;
+    CyanManager *_cyanManager;
+    NSIndexPath *_chooseIndexPath;
+}
+@property(nonatomic,strong)UICollectionView *staffCollection;
+
+@end
+
+@implementation StaffHomeViewController
+
+-(void)viewWillAppear:(BOOL)animated{
+    [super viewWillAppear:animated];
+    self.navigationController.navigationBarHidden = YES;
+    _cyanManager  = [CyanManager shareSingleTon];
+    NSString  *isFirstFilePath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/first.plist"];
+    NSDictionary *dic = [[NSDictionary alloc]initWithContentsOfFile:isFirstFilePath];
+    
+    BOOL isFirst = [dic[@"isFirst"] boolValue];//第一次是no
+    
+    if (isFirst) {//完全登录成功
+//
+    }else{
+        
+#pragma 测试用，正常不会有。。。
+         [self loadCustomersType];
+//        if (_cyanManager.sysNO) {
+//            
+//        }else{
+//            
+//            [self loadData];
+//
+//        }
+        
+       
+        
+    }
+ 
+    
+}
+
+-(void)viewWillDisappear:(BOOL)animated{
+    [super viewWillDisappear:animated];
+    self.navigationController.navigationBarHidden = NO;
+
+}
+//-(void)viewDidDisappear:(BOOL)animated{
+//    [super viewDidDisappear:animated];
+//    self.navigationController.navigationBarHidden = NO;
+////    //将要消失 取消cell背景
+////    StaffHomeCell  *cell = (StaffHomeCell *)[_staffCollection cellForItemAtIndexPath:_chooseIndexPath];
+////    cell.contentView.backgroundColor = [UIColor whiteColor];
+//}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = PaleColor;
+    _cyanManager = [CyanManager shareSingleTon];
+    
+    NSLog(@"员工首页");
+    [self.view addSubview:self.staffCollection];
+    [self loadData];
+    
+    
+}
+/**
+   请求类别
+ */
+-(void)loadCustomersType{
+    
+    [self showSVPByStatus:@"加载中..."];
+    //先不显示 collectionview
+    self.staffCollection.hidden = YES;
+    
+    NSLog(@" sysNO:%@,isStaff :%@,customersType :%@",_cyanManager.sysNO,_cyanManager.isStaff,_cyanManager.customersType);
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.requestSerializer = [AFHTTPRequestSerializer serializer];
+    //    AFPropertyListResponseSerializer AFHTTPResponseSerializer AFJSONResponseSerializer
+    /**
+     这两个 必须设置
+     */
+    manager.responseSerializer = [AFPropertyListResponseSerializer serializer];
+    manager.responseSerializer.acceptableContentTypes =[NSSet setWithObjects:@"application/json", @"text/json", @"text/javascript", @"text/html",nil];
+    
+    //设置请求头 压缩
+    [manager.requestSerializer setValue:@"gzip" forHTTPHeaderField:@"Accept-Encoding"];
+    [manager.requestSerializer setTimeoutInterval:40];
+    
+//    NSString *sysNo = @"";
+
+//    _cyanManager.sysNO
+    NSDictionary *parameters  = @{
+                                  @"SystemUserSysNo":_cyanManager.sysNO
+                                  
+                                  };
+    //    TopGradeUrl LoginShopUrl
+    NSString *url = [BaseUrl stringByAppendingString:TopGradeUrl];;
+    
+    [manager POST:url parameters:parameters progress:^(NSProgress * _Nonnull uploadProgress) {
+        
+    } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        [self dismissSVP];
+        NSLog(@"responseObject :%@",responseObject);
+        NSString *key = responseObject;
+        if (key.length) {
+            
+            [self loginSuccess];
+            
+            
+            NSArray *arr = [responseObject componentsSeparatedByString:@","];
+            NSLog(@"arr :%@",arr);
+            _cyanManager.shopSysNo = arr[0];
+            _cyanManager.customersType = arr[1];
+            _cyanManager.shopName = arr[2];
+            
+            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+            [defaults setObject:arr[0] forKey:@"shopSysNo"];
+            [defaults setObject:arr[1] forKey:@"customersType"];
+            [defaults setObject:arr[2] forKey:@"shopName"];
+
+            [defaults synchronize];
+
+            self.staffCollection.hidden = NO;
+            
+            [self loadData];
+        }else{
+            NSLog(@"请求是空");
+            [MessageView showMessage:@"获取员工类别失败"];
+    
+            [self performSelector:@selector(loginOut) withObject:nil afterDelay:1];
+        }
+        
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSLog(@"error :%@",error);
+#pragma mark 需要跳转登录页
+        [self dismissSVP];
+        
+        [MessageView showMessage:@"获取员工类别失败"];
+        [self performSelector:@selector(loginOut) withObject:nil afterDelay:1];
+        
+    }];
+}
+-(void)loginOut{
+    LoginViewController *login = [LoginViewController new];
+    UIWindow* window =  [UIApplication sharedApplication].keyWindow;
+    window.rootViewController = login;
+    [_cyanManager cleanUserInfo];
+}
+
+-(void)loadData{
+    
+    NSLog(@"customersType : %@",_cyanManager.customersType);
+    if ([_cyanManager.customersType isEqualToString:@"0"]) {//服务商下员工
+        NSArray *orderArr = @[@"top_rate_query_n",@"rate_query_n"];
+        NSArray *orderSelectedArr = @[@"top_rate_query_n",@"rate_query_n"];
+        NSArray *titleArr = @[@"上级费率订单",@"费率订单"];
+        _staffCellArr = [NSMutableArray new];
+        for (NSInteger index = 0; index < titleArr.count; index ++) {
+            StaffModel *model = [[StaffModel alloc]init];
+            model.btnNormal = orderArr[index];
+            model.btnSelected = orderSelectedArr[index];
+            model.title = titleArr[index];
+            [_staffCellArr addObject:model];
+        }
+        
+        [self.staffCollection reloadData];
+        
+    }else if ([_cyanManager.customersType isEqualToString:@"1"]) {//商户下员工
+        //top_rate_query_n rate_query_n
+        NSArray *orderArr = @[@"staff_wx_normal",@"staff_alipay_normal",@"staff_remoney_normal",@"staff_refund_normal",@"staff_code_s",@"rate_query_n",@"staff_count_normal"];
+        NSArray *orderSelectedArr = @[@"staff_wx_selected",@"staff_alipay_selected",@"staff_remoney_selected",@"staff_refund_selected",@"staff_code_s",@"rate_query_n",@"staff_count_selected"];
+        NSArray *titleArr = @[@"微信订单",@"支付宝订单",@"退款",@"退款查询",@"员工二维码",@"费率订单",@"统计"];
+        _staffCellArr = [NSMutableArray new];
+        for (NSInteger index = 0; index < titleArr.count; index ++) {
+            StaffModel *model = [[StaffModel alloc]init];
+            model.btnNormal = orderArr[index];
+            model.btnSelected = orderSelectedArr[index];
+            model.title = titleArr[index];
+            [_staffCellArr addObject:model];
+        }
+        
+        [self.staffCollection reloadData];
+    }
+
+}
+#pragma mark -- collection
+-(UICollectionView *)staffCollection{
+    
+    if (!_staffCollection) {
+        UICollectionViewFlowLayout * layout = [[UICollectionViewFlowLayout alloc]init];
+        layout.minimumInteritemSpacing=0;
+        layout.minimumLineSpacing=0;
+        _staffCollection=[[UICollectionView alloc]initWithFrame:CGRectMake(0, 0, MainScreenWidth, MainScreenHeight -49)  collectionViewLayout:layout];
+        _staffCollection.delegate=self;
+        _staffCollection.dataSource=self;
+        _staffCollection.showsVerticalScrollIndicator=NO;
+        _staffCollection.showsHorizontalScrollIndicator=NO;
+        _staffCollection.backgroundColor=PaleColor;
+#pragma mark -- 注册单元格
+        [_staffCollection registerClass:[StaffHomeCell class] forCellWithReuseIdentifier:@"StaffHomeCell"];
+        [_staffCollection registerClass:[StaffHomeCell2 class] forCellWithReuseIdentifier:@"StaffHomeCell2"];
+
+#pragma mark -- 注册头部视图
+        [_staffCollection registerClass:[StaffHomeTopView class] forSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@"StaffHomeTopView"];
+        
+#pragma mark -- 注册尾视图
+        [_staffCollection registerClass:[StaffHomeFooterView class] forSupplementaryViewOfKind:UICollectionElementKindSectionFooter withReuseIdentifier:@"StaffHomeFooterView"];
+    }
+    return _staffCollection;
+}
+
+
+#pragma mark UICollectionViewDataSource
+
+//分组
+-(NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView{
+    
+    return 1;//推荐
+}
+- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section{
+    return  _staffCellArr.count;
+    
+}
+- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath{
+    
+
+    StaffHomeCell  *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"StaffHomeCell" forIndexPath:indexPath];
+    cell.model  = _staffCellArr[indexPath.row];
+    cell.contentView.backgroundColor = [UIColor whiteColor];
+    //        cell.selectedBackgroundView = [[UIView alloc] initWithFrame:cell.frame] ;
+    //        cell.selectedBackgroundView.backgroundColor = [UIColor yellowColor];
+    return cell;
+  
+    
+}
+
+//组头
+-(UICollectionReusableView *)collectionView:(UICollectionView *)collectionView viewForSupplementaryElementOfKind:(NSString *)kind atIndexPath:(NSIndexPath *)indexPath{
+    if (kind == UICollectionElementKindSectionHeader) {
+        StaffHomeTopView * top = [collectionView dequeueReusableSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@"StaffHomeTopView" forIndexPath:indexPath];
+        top.delegete = self;
+        top.isShopStaff  = _cyanManager.customersType;
+        return top;
+    }else{
+        
+        /**
+         9.29 去掉 轮播尾视图
+         
+         */
+//        StaffHomeFooterView *footer = [collectionView dequeueReusableSupplementaryViewOfKind:UICollectionElementKindSectionFooter withReuseIdentifier:@"StaffHomeFooterView" forIndexPath:indexPath];
+//        
+//        return footer;
+        
+        return nil;
+    }
+    
+}
+//每组里item的大小
+-(CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath{
+    return CGSizeMake(MainScreenWidth /4.0, MainScreenWidth /4.0);
+    
+}
+//头
+-(CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout referenceSizeForHeaderInSection:(NSInteger)section{
+    
+    return CGSizeMake(MainScreenWidth, 280);
+}
+//尾
+//每个section的footer
+-(CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout referenceSizeForFooterInSection:(NSInteger)section{
+    
+//    return CGSizeMake(MainScreenWidth,100);
+    return CGSizeMake(0,0);
+
+}
+//
+-(void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath{
+    
+    if ([_cyanManager.customersType isEqualToString:@"0"]) {//服务商
+        switch (indexPath.row) {
+            case 0:
+            {
+                //上级费率订单
+                QueryRateViewController *shop = [QueryRateViewController new];
+                
+                //    CyanManager *cyManager = [CyanManager shareSingleTon];
+                //    if ([cyManager.isStaff isEqualToString:@"1"]) {//员工
+                //        shop.queryOrderState = kOrderCustomerUser;
+                //    }else{
+                //        shop.queryOrderState = kOrderCustomer;
+                //
+                //
+                //    }
+                //    shop.customer = self.queryShopModel.Customer;
+                shop.hidesBottomBarWhenPushed = YES;
+                shop.queryOrderState = kTopCustomerUserRate;
+//                shop.userSysNo = self.queryShopModel.SysNo;
+                [self.navigationController pushViewController:shop animated:YES];
+                
+                NSLog(@"上级费率");
+            }
+                break;
+                
+            case 1:
+            {
+                NSLog(@"费率");
+                
+                QueryRateViewController *shop = [QueryRateViewController new];
+                
+                //    CyanManager *cyManager = [CyanManager shareSingleTon];
+                //    if ([cyManager.isStaff isEqualToString:@"1"]) {//员工
+                //        shop.queryOrderState = kOrderCustomerUser;
+                //    }else{
+                //        shop.queryOrderState = kOrderCustomer;
+                //
+                //
+                //    }
+                //    shop.customer = self.queryShopModel.Customer;
+                shop.queryOrderState = kOrderCustomerUser;
+//                shop.userSysNo = self.queryShopModel.SysNo;
+                shop.hidesBottomBarWhenPushed = YES;
+
+                [self.navigationController pushViewController:shop animated:YES];
+                
+                
+            }
+                break;
+            default:
+                break;
+        }
+        
+        
+    }else{
+        
+        switch (indexPath.row) {//商户
+            case 0:
+            {
+                QueryWXOrderViewController *query = [QueryWXOrderViewController new];
+                query.hidesBottomBarWhenPushed = YES;
+                [self.navigationController pushViewController:query animated:YES];
+            }
+                break;
+                
+            case 1:
+            {
+                QueryAliOrderViewController *query = [QueryAliOrderViewController new];
+                query.hidesBottomBarWhenPushed = YES;
+                [self.navigationController pushViewController:query animated:YES];
+            }
+                break;
+            case 2:
+            {    RefundViewController *refund = [RefundViewController new];
+                refund.hidesBottomBarWhenPushed = YES;
+                [self.navigationController pushViewController:refund animated:YES];
+            }
+                break;
+            case 3:
+            {
+                RefundQueryViewController *refund = [RefundQueryViewController new];
+                refund.hidesBottomBarWhenPushed = YES;
+                [self.navigationController pushViewController:refund animated:YES];
+            }
+                break;
+            case 4:
+            {
+                StaffCodeViewController *staff  = [StaffCodeViewController new];
+                staff.hidesBottomBarWhenPushed = YES;
+                [self.navigationController pushViewController:staff animated:YES];
+                
+            }
+                break;
+            case 5:
+            {
+                QueryRateViewController *shop = [QueryRateViewController new];
+                
+                //    CyanManager *cyManager = [CyanManager shareSingleTon];
+                //    if ([cyManager.isStaff isEqualToString:@"1"]) {//员工
+                //        shop.queryOrderState = kOrderCustomerUser;
+                //    }else{
+                //        shop.queryOrderState = kOrderCustomer;
+                //
+                //
+                //    }
+                //    shop.customer = self.queryShopModel.Customer;
+                shop.queryOrderState = kOrderShopUser;
+                //                shop.userSysNo = self.queryShopModel.SysNo;
+                shop.hidesBottomBarWhenPushed = YES;
+                
+                [self.navigationController pushViewController:shop animated:YES];
+            }
+                break;
+                
+                
+            default:
+                break;
+        }
+ 
+    }
+
+    
+
+}
+
+- (void)collectionView:(UICollectionView *)collectionView didDeselectItemAtIndexPath:(NSIndexPath *)indexPath{
+
+//    
+}
+/*
+- (BOOL)collectionView:(UICollectionView *)collectionView shouldHighlightItemAtIndexPath:(NSIndexPath *)indexPath{
+    if ([_cyanManager.customersType isEqualToString:@"0"]) {
+        return YES;
+    }else{
+        StaffHomeCell  *cell = (StaffHomeCell *)[collectionView cellForItemAtIndexPath:indexPath];
+        cell.contentView.backgroundColor = [UIColor yellowColor];
+        return YES;
+    }
+
+}
+
+- (void)collectionView:(UICollectionView *)collectionView didHighlightItemAtIndexPath:(NSIndexPath *)indexPath{
+
+    
+}
+
+- (void)collectionView:(UICollectionView *)collectionView didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath{
+    if ([_cyanManager.customersType isEqualToString:@"0"]) {
+        return;
+    }
+    StaffHomeCell  *cell = (StaffHomeCell *)[collectionView cellForItemAtIndexPath:indexPath];
+    cell.contentView.backgroundColor = [UIColor whiteColor];
+}
+ */
+
+#pragma mark  ChooseHeaderDelegate
+-(void)chooseIndex:(NSInteger)index{
+    
+    //            kOrderShop   = 0,//商户订单查询
+    //            kOrderShopUser        =  10,//商户员工订单查询
+    //            kOrderCustomer   = 20 ,//服务商订单查询
+    //            kOrderCustomerUser = 30//服务商员工订单查询
+    if ([_cyanManager.customersType isEqualToString:@"0"]) {//服务商员工
+        switch (index) {
+            case 0:
+            {
+                NSLog(@"订单查询");
+                QueryViewController *query =[QueryViewController new];
+                query.hidesBottomBarWhenPushed = YES;
+                query.queryOrderState = kOrderCustomerUser;
+                [self.navigationController pushViewController:query animated:YES];
+            }
+                break;
+            case 1:
+            {
+                NSLog(@"商户查询");
+                ShopQueryViewController *code = [ShopQueryViewController new];
+                code.hidesBottomBarWhenPushed = YES;
+                [self.navigationController pushViewController:code animated:YES];
+            }
+                break;
+       
+            default:
+                break;
+        }
+    }else{
+        switch (index) {
+            case 0:
+            {
+                NSLog(@"智能扫码");
+                CodePayViewController *codePay = [CodePayViewController new];
+                codePay.hidesBottomBarWhenPushed = YES;
+                [self.navigationController pushViewController:codePay animated:YES];
+                
+         
+            }
+                break;
+            case 1:
+            {
+                NSLog(@"二维码");
+                CodeViewController *code = [CodeViewController new];
+                code.hidesBottomBarWhenPushed = YES;
+                [self.navigationController pushViewController:code animated:YES];
+            }
+                break;
+            case 2:
+            {
+                NSLog(@"订单查询");
+                QueryViewController *query =[QueryViewController new];
+                query.hidesBottomBarWhenPushed = YES;
+                query.queryOrderState = kOrderShopUser;
+
+                [self.navigationController pushViewController:query animated:YES];
+                
+            }
+                break;
+            default:
+                break;
+        }
+    }
+
+}
+
+-(void)jumpMine{
+    NSLog(@"跳转mine");
+    TabBarViewController *tabVC=[TabBarViewController share];
+    
+    tabVC.selectedIndex = 3;
+}
+@end

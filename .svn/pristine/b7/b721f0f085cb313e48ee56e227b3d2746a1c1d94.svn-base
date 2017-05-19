@@ -1,0 +1,116 @@
+//
+//  PrefixHeader.pch
+//  CloudTiger
+//
+//  Created by cyan on 16/9/5.
+//  Copyright © 2016年 cyan. All rights reserved.
+//
+
+#ifndef PrefixHeader_pch
+#define PrefixHeader_pch
+
+#import "Commen.h"
+#import "UIImage+image.h"
+#import "TabBarViewController.h"
+
+#import "MJRefresh.h"
+#import "AFNetworking.h"
+#import "UIImageView+WebCache.h"
+
+#import "CyTools.h"
+#import "UIView+Utils.h"
+#import "CyanLoading.h"
+#import "CyanManager.h"
+#import "SVProgressHUD.h"
+#import "MessageView.h"
+
+#import "List.h"
+
+//pos iosapi
+#define BaseUrl @"http://iosapi.yunlaohu.cn/"
+//登录
+#define LoginStaffUrl @"IPP3Customers/IPP3Login"
+#define LoginShopUrl @"IPP3Customers/IPP3CustomerLogin"
+
+//修改密码
+#define ChangePassWordStaffUrl  @"IPP3Customers/IPP3SystemUserUpdatePwd"
+#define ChangePassWordShopUrl  @"IPP3Customers/IPP3CustomerUpdPwd"
+
+//修改个人资料-员工
+#define PersonUrl @"IPP3Customers/IPP3SystemUserUpdate"
+
+//员工资料获取
+#define  StaffPersonUrl @"IPP3Customers/IPP3SystemUserList"
+
+//员工获取上一级类别
+#define TopGradeUrl  @"IPP3Customers/IPP3GetCustomerServiceSysNo"
+
+/**查询订单 -商户员工*/
+#define QueryOrderShopUserUrl @"IPP3Order/IPP3OrderListShopUserSP"
+/**查询订单- 服务商员工 */
+#define QueryOrderCustomerUserUrl @"IPP3Order/IPP3OrderListCustomerUserSP"
+
+/**查询订单 -商户*/
+#define QueryOrderShopUrl @"IPP3Order/IPP3OrderListShopSP"
+/**查询订单- 服务商 */
+#define QueryOrderCustomerUrl @"IPP3Order/IPP3OrderListCustomerSP"
+
+
+/**汇总-all*/
+#define SummaryUrl @"IPP3Order/IPP3OrderListcollect"
+
+/**汇总-服务商员工*/
+#define StaffSummaryUrl   @"IPP3Order/IPP3Order_Group_CustomerUserList"
+
+/**费率订单查询—商户 */
+#define ShopRateQueryUrl  @"IPP3Order/IPP3OrderListShopSPRate"
+
+/**费率订单汇总查询—商户 */
+#define ShopRateSummaryUrl @"IPP3Order/IPP3Order_Fund_ShopSPRate"
+
+/**微信订单查询 —— 商户员工*/
+#define QueryWXOrderUrl @"Payment/Payments/QueryWxOrder"
+
+/**支付宝订单查询 —— 商户员工*/
+#define QueryAliOrderUrl @"IPP3AliPay/AliPayquery"
+
+
+/**微信订单取消 —— 商户员工*/
+#define WXOrderCancelUrl @"Payment/Payments/WXCloseOrder"
+
+/**支付宝订单取消 —— 商户员工*/
+#define AliOrderCancelUrl @"IPP3AliPay/AliPayCancel"
+
+/**退款 - 员工*/
+#define QureyRefundUrl @"IPP3Order/IPP3OrderFundList"
+/**退款查询 - 员工*/
+#define QueryRefundOrderUrl  @"POS/POSRefundList"
+/**退款操作(微信) - 员工*/
+#define RefundWXUrl @"POS/POSRefundInsert"
+/**退款操作(支付宝) - 员工*/
+#define RefundAliUrl @"IPP3AliPay/AliPayRefundUnion"
+
+/**商户查询-员工*/
+#define ShopQueryUrl @"IPP3Customers/IPP3CustomerShopList"
+
+/**商户查询上级员工-商户*/
+#define ShopQueryTopStaffUrl   @"IPP3Customers/IPP3SystemUserByCSsysNo"
+
+/**商户查询 - 商户*/
+#define StaffQueryUrl @"IPP3Customers/IPP3SystemUserListCSsysno"
+
+/**调拨员工 - 服务商*/
+#define AssignStaffUrl @"IPP3Customers/IPP3CustomerUserUpdate"
+
+/**获取微信二维码*/
+#define GetWXCodeUrl @"Payment/Payments/GetPayUrl"
+/**获取支付宝二维码*/
+#define GetAliCodeUrl @"IPP3AliPay/GetAliPayUrl"
+
+/**微信扫码支付*/
+#define WXCodePayUrl @"POS/POSOrderInsert"
+/**支付宝扫码支付*/
+#define AliCodePayUrl  @"IPP3AliPay/BarcodePayUnion"
+
+
+#endif /* PrefixHeader_pch */

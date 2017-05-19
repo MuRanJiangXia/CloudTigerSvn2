@@ -1,0 +1,245 @@
+//
+//  BaseViewController.m
+//  GuanJiaLaiLeApp
+//
+//  Created by LingJi on 16/5/24.
+//  Copyright © 2016年 ZOE. All rights reserved.
+//
+
+#import "BaseViewController.h"
+
+@implementation BaseViewController
+
+
+-(UIStatusBarStyle)preferredStatusBarStyle{
+    return UIStatusBarStyleLightContent;
+}
+
+//-(void)viewWillDisappear:(BOOL)animated{
+//    [super viewWillDisappear:animated];
+////    [self dismissLoading];
+//}
+//
+//-(void)viewWillAppear:(BOOL)animated{
+//    [super viewWillAppear:animated];
+//  
+////    [self.navigationController setNavigationBarHidden:NO animated:NO];
+//    
+//    
+////    NSLog(@"-=-==-==-=-=-=-=-=-=-=-=-=-=-=-=-=-=-==-=%@",self.navigationController.viewControllers);
+////    
+////    if ([List isConnectionAvailable]) {
+////    
+////        if (emptyView ) {
+////            [emptyView removeFromSuperview];
+////        
+////        }
+////        
+////        
+////    }
+//}
+-(void)viewDidLoad{
+    [super viewDidLoad];
+    
+    self.view.backgroundColor = UIColorFromRGB(0xededed, 1.0);
+    
+    self.edgesForExtendedLayout = UIRectEdgeNone;
+    self.automaticallyAdjustsScrollViewInsets =NO;
+    //设置 btn 不支持多点触控
+    [[UIButton appearance] setExclusiveTouch:YES];
+    
+    NSInteger count = self.navigationController.viewControllers.count;
+    
+    if (count > 1) {
+        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageWithOriginalName:@"back_n.png"] style:UIBarButtonItemStyleDone target:self action:@selector(backAction)];
+        
+    }
+}
+
+
+-(void)homeBtnView{
+    UIControl *control = [[UIControl alloc]initWithFrame:CGRectMake(0,  MainScreenHeight - 68  -64, MainScreenWidth, 68)];
+    control.backgroundColor = [UIColor clearColor];
+    [self.view addSubview:control];
+    
+    //     28 + 40 = 68
+    UIView *view = [[UIView alloc]initWithFrame:CGRectMake(0, 28, MainScreenWidth, 40)];
+    view.backgroundColor = BlueColor;
+    view.alpha = 0.7;
+    [control addSubview:view];
+    
+    NSLog(@"MainScreenWidth :%f",MainScreenWidth);
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    button.frame = CGRectMake((MainScreenWidth - 56)/2.0, 0 , 56, 56);
+    //    button.backgroundColor = [UIColor purpleColor];
+    [button setBackgroundImage:[UIImage imageNamed:@"bottom_btn_n"] forState:UIControlStateNormal];
+    [button setBackgroundImage:[UIImage imageNamed:@"bottom_btn_s"] forState:UIControlStateHighlighted];
+    [button addTarget:self action:@selector(topAction:) forControlEvents:UIControlEventTouchUpInside];
+    [control addSubview:button];
+    
+}
+
+-(void)topAction:(UIButton *)btn{
+    
+    NSLog(@"返回首页");
+    [self.navigationController popToRootViewControllerAnimated:YES];
+}
+
+-(void)backAction{
+    [self.navigationController popViewControllerAnimated:YES];
+}
+//登出
+-(void)loginException{
+    NSString  *isFirstFilePath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/first.plist"];
+    //登出
+    NSDictionary *isFirstDic = @{@"isFirst":@NO};//测试 为NO
+    [isFirstDic writeToFile:isFirstFilePath atomically:YES];
+    
+    [[CyanManager shareSingleTon]cleanUserInfo];
+
+}
+
+-(BOOL)isLoginSuccess{
+    
+    NSString  *isFirstFilePath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/first.plist"];
+    NSDictionary *dic = [[NSDictionary alloc]initWithContentsOfFile:isFirstFilePath];
+    
+    BOOL isFirst = [dic[@"isFirst"] boolValue];//第一次是no
+    return isFirst;
+}
+-(void)loginSuccess{
+    
+    NSString  *isFirstFilePath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/first.plist"];
+    //登录成功
+    NSDictionary *isFirstDic = @{@"isFirst":@YES};//测试 为NO
+    [isFirstDic writeToFile:isFirstFilePath atomically:YES];
+}
+
+
+-(void)loginFail{
+    
+    NSString  *isFirstFilePath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/first.plist"];
+    //登录失败
+    NSDictionary *isFirstDic = @{@"isFirst":@NO};//测试 为NO
+    [isFirstDic writeToFile:isFirstFilePath atomically:YES];
+}
+-(void)alterWith:(NSString *)content{
+#pragma 提示为 商品查询失败 时直接返回
+    if ([content isEqualToString:@"商品查询失败"]) {
+        return;
+    }
+    
+    if (content.length == 0) {
+        
+        content = @"输入错误";
+//        [[CyanManger shareSingleTon] cleanUserInfo];
+    } else {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:content message:nil preferredStyle:UIAlertControllerStyleAlert];
+        
+        UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+            
+#warning 传递 是否选择了
+            BOOL ischoose = YES;
+            if (self.isChooseBlock) {
+                self.isChooseBlock(ischoose);
+            }
+        }];
+        
+        
+        [alert addAction:cancelAction];
+        
+        
+        [self presentViewController:alert animated:YES completion:nil];
+
+    }
+    
+    
+
+}
+
+
+-(void)alterWith:(NSString *)content IsChoose:(void (^)(BOOL isSure))isSure{
+#pragma 提示为 商品查询失败 时直接返回
+    if ([content isEqualToString:@"商品查询失败"]) {
+        return;
+    }
+    
+    if (content.length == 0) {
+//        content = @"输入错误";
+//        [[CyanManger shareSingleTon] cleanUserInfo];
+    }
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:content message:nil preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+        
+        BOOL ischoose = NO;
+        isSure(ischoose);
+    }];
+    
+    UIAlertAction *sureAction = [UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        
+        BOOL ischoose = YES;
+        isSure(ischoose);
+    }];
+    
+    [alert addAction:cancelAction];
+    [alert addAction:sureAction];
+    
+    [self presentViewController:alert animated:YES completion:nil];
+
+}
+
+-(void)loadingShow{
+    
+    //加载中。。。。
+    [[CyanLoading shareLoading]show];
+}
+
+-(void)dismissLoading{
+    
+    [[CyanLoading shareLoading]dismiss];
+
+}
+-(void)dismissLoadingLater{
+    //加载结束 。。。。
+    [self performSelector:@selector(dismissLoading) withObject:nil afterDelay:.5];
+}
+
+-(void)showSVP{
+    [SVProgressHUD show];
+    [SVProgressHUD setKeyBoardMove:YES];
+}
+-(void)showSVPByStatus:(NSString *)status{
+    [SVProgressHUD showWithStatus:status];
+    [SVProgressHUD setKeyBoardMove:YES];
+
+    /**设置成不能交互*/
+    [SVProgressHUD setDefaultMaskType:SVProgressHUDMaskTypeClear];
+//    [SVProgressHUD setOffsetFromCenter:UIOffsetMake(0, 100)];// 位置 偏移
+
+    [SVProgressHUD resetOffsetFromCenter];
+
+/**提示错误*/
+}
+-(void)showSVPErrorStatus:(NSString *)str{
+    [SVProgressHUD showErrorWithStatus:str];
+    [SVProgressHUD setKeyBoardMove:YES];
+    /**设置成不能交互*/
+    [SVProgressHUD setDefaultMaskType:SVProgressHUDMaskTypeClear];
+    
+}
+
+
+-(void)dismissSVP{
+    
+    [SVProgressHUD dismiss];
+
+}
+
+-(void)dismissSVPLater{
+    //加载结束 。。。。
+    [self performSelector:@selector(dismissLoading) withObject:nil afterDelay:.5];
+    
+}
+@end

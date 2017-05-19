@@ -1,0 +1,19 @@
+//
+//  RefudDesModel.m
+//  CloudTiger
+//
+//  Created by cyan on 16/9/18.
+//  Copyright © 2016年 cyan. All rights reserved.
+//
+
+#import "RefudDesModel.h"
+
+@implementation RefudDesModel
+-(void)setValue:(id)value forUndefinedKey:(NSString *)key{
+    
+    
+    
+    
+    
+}
+@end

@@ -1,0 +1,307 @@
+//
+//  PersonViewController.m
+//  CloudTiger
+//
+//  Created by cyan on 16/9/28.
+//  Copyright © 2016年 cyan. All rights reserved.
+//
+
+#import "PersonViewController.h"
+#import "PersonCell.h"
+#import "PassWordModel.h"
+@interface PersonViewController ()<UITableViewDelegate,UITableViewDataSource,PassWordCellDelegate>{
+    
+    NSArray *_mineArr;
+    NSMutableArray *_cellArr;
+
+}
+
+@property(nonatomic,strong)UITableView *table;
+
+@end
+
+@implementation PersonViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"账号信息";
+    self.view.backgroundColor = UIColorFromRGB(0xF6F5F9, 1);
+    
+    [self.view addSubview:self.table];
+  
+    [self loadData];
+
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    button.frame = CGRectMake(15, MainScreenHeight - 50 -64 , MainScreenWidth - 30, 40);
+    button.backgroundColor = BlueColor;
+    [button setTitle:@"确定" forState:UIControlStateNormal];
+    [button addTarget:self action:@selector(changePassWord:) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:button];
+    
+    button.layer.cornerRadius = 5;
+    button.layer.masksToBounds = YES;
+    
+}
+-(void)changePassWord:(UIButton *)btn{
+    /**
+     必须 把键盘收起来不然，， 会少穿字段
+     */
+    [_table endEditing:YES];
+    
+    CyanManager *cyanManager  = [CyanManager shareSingleTon];
+
+    NSMutableDictionary *parameter = [NSMutableDictionary new];
+    PassWordModel *passModel =  _cellArr[2];
+    NSString *phone = passModel.cellText;
+    if ( ![CyTools checkPhoneNumberBy:phone]) {
+        [MessageView showMessage:@"联系电话填写不正确"];
+        NSLog(@"联系电话填写不正确");
+        return;
+    }
+    
+    PassWordModel *passModel3 =  _cellArr[3];
+    NSString *disName = passModel3.cellText;
+    
+    if (disName.length == 0) {
+        [MessageView showMessage:@"真实姓名为空"];
+
+        NSLog(@"真实姓名为空");
+        return;
+    }
+    PassWordModel *passModel4 =  _cellArr[4];
+    NSString *email = passModel4.cellText;
+    if (![CyTools isValidateEmail:email]) {
+        [MessageView showMessage:@"邮箱填写不正确"];
+
+        NSLog(@"邮箱填写不正确");
+        return;
+    }
+//
+    PassWordModel *passModel5 =  _cellArr[5];
+    NSString *store = passModel5.cellText;
+
+    for (NSInteger index = 2; index < _cellArr.count; index++) {//联系电话，真实姓名，邮箱地址，门店id
+        PassWordModel *passModel =  _cellArr[index];
+        [parameter setObject:passModel.cellText forKey:passModel.titleKey];
+    }
+
+    [parameter setObject:cyanManager.sysNO forKey:@"SysNo"];
+    
+    NSLog(@"确定修改 parameter：%@",parameter);
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.requestSerializer = [AFHTTPRequestSerializer serializer];
+    //manager.responseSerializer.acceptableContentTypes=[NSSet setWithObjects:@"text/html", nil];
+    //设置请求头 压缩
+    [manager.requestSerializer setValue:@"gzip" forHTTPHeaderField:@"Accept-Encoding"];
+    [manager.requestSerializer setTimeoutInterval:40];
+    
+    NSString *url = [NSString stringWithFormat:@""];
+    
+    url = [BaseUrl stringByAppendingString:PersonUrl];
+    [self showSVPByStatus:@"加载中。。"];
+    
+    [manager POST:url parameters:parameter progress:^(NSProgress * _Nonnull uploadProgress) {
+        ;
+    } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        [self dismissSVP];
+        NSLog(@"responseObject : %@",responseObject);
+        NSInteger  Code = [responseObject[@"Code"]integerValue];
+        NSString *Description  = responseObject[@"Description"];
+        
+        if (Code == 0) {
+            NSLog(@"修改成功");
+            [MessageView showMessage:@"修改账号信息成功"];
+
+            [self performSelector:@selector(backTop) withObject:nil afterDelay:.5];
+
+            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+            
+            //保存一下
+            for (NSInteger index = 2; index < _cellArr.count; index++) {//联系电话，真实姓名，邮箱地址，门店id
+                PassWordModel *passModel =  _cellArr[index];
+                [defaults setObject:passModel.cellText forKey:passModel.titleKey];
+            }
+            
+           [defaults synchronize];
+            
+            CyanManager *manager = [CyanManager shareSingleTon];
+            manager.displayName = disName;
+            manager.phoneNumber = phone;
+            manager.email = email;
+            manager.storeID = store;
+            
+        }else{
+            
+            [MessageView showMessage:Description];
+ 
+        }
+        
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        [self dismissSVP];
+        [MessageView showMessage:@"修改失败"];
+
+        NSLog(@"error :%@",error);
+    }];
+
+    
+}
+-(void)backTop{
+    
+    [self backAction];
+}
+-(void)loadData{
+    CyanManager *cyanManager  = [CyanManager shareSingleTon];
+    
+    //先获取一下本地的
+    NSString *name =   cyanManager.loginName;
+    NSString *identity = @"";
+    NSString *storeID = cyanManager.storeID;
+    NSLog(@"phoneNumber : %@, email: %@,openID :%@",cyanManager.phoneNumber,cyanManager.email,cyanManager.storeID);
+    if ([cyanManager.customersType isEqualToString:@"0"]) {
+    identity = @"服务商员工";
+        
+    }else{
+        
+    identity = @"商户员工";
+    }
+    /**
+     DepartmentName  部门
+     DisplayName  显示名称
+     Email  邮箱
+     PhoneNumber 电话
+     SysNo 主键
+     Alipay_store_id 门店ID
+     */
+    
+    _mineArr  = @[  @{@"name":@"用户名"},
+                    @{@"o_pass":@"用户身份"},
+                    @{@"PhoneNumber":@"联系电话"},
+                    @{@"DisplayName":@"真实姓名"},
+                    @{@"Email":@"邮箱地址"},
+                    @{@"Alipay_store_id":@"门店ID"}
+                    ];
+    
+    _cellArr = [NSMutableArray new];
+    for (NSInteger index = 0; index < _mineArr.count; index++) {
+        NSDictionary *dic = _mineArr[index];
+        
+        PassWordModel *passModel = [[PassWordModel alloc]init];
+        passModel.titleKey = dic.allKeys[0];
+        passModel.title = [dic valueForKey:passModel.titleKey];
+        
+        switch (index) {
+            case 0:
+            {
+                passModel.cellText = name;
+            }
+            break;
+            case 1:
+            {
+                passModel.cellText = identity;
+            }
+                break;
+            case 2:
+            {
+                passModel.cellText = cyanManager.phoneNumber;
+            }
+                break;
+            case 3:
+            {
+                passModel.cellText = cyanManager.displayName;
+            }
+                break;
+            case 4:
+            {
+                passModel.cellText = cyanManager.email;
+            }
+                break;
+            case 5:
+            {
+                passModel.cellText = cyanManager.storeID;
+            }
+                break;
+                
+            default:
+//            {
+//                passModel.cellText = @"";
+//                
+//            }
+                break;
+        }
+        [_cellArr addObject:passModel];
+    }
+    
+    
+    [self.table reloadData];
+}
+#pragma mark --- table
+-(UITableView *)table{
+    if (!_table) {
+        _table = [[UITableView alloc]initWithFrame:CGRectMake(0, 0, MainScreenWidth, MainScreenHeight -64) style:UITableViewStylePlain];
+        
+        [_table registerClass:[PersonCell class] forCellReuseIdentifier:@"PersonCell"];
+        
+        _table.delegate = self;
+        _table.dataSource = self;
+        //
+        _table.backgroundColor =   UIColorFromRGB(0xEDEDED, 1);
+        //去掉头部留白
+        UIView *view = [[UIView alloc]initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 0.001)];
+        view.backgroundColor = [UIColor redColor];
+        _table.tableHeaderView = view;
+        //去掉边线
+        _table.separatorStyle = UITableViewCellSeparatorStyleNone;
+        
+    }
+    return _table;
+}
+#pragma mark UITableViewDataSource
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    return _mineArr.count;
+    
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    PersonCell  *cell =  [tableView dequeueReusableCellWithIdentifier:@"PersonCell" forIndexPath:indexPath];
+    
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.indexPath = indexPath;
+    cell.passWordModel = _cellArr[indexPath.row];
+    cell.delegete = self;
+    return cell;
+    
+}
+
+-(CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath{
+    
+    return 60;
+}
+
+//-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+//    if (indexPath.row == 0) {
+//        ChangePassWordViewController *change = [ChangePassWordViewController new];
+//        change.hidesBottomBarWhenPushed = YES;
+//        [self.navigationController pushViewController:change animated:YES];
+//    }else{
+//
+//        PersonViewController *person = [PersonViewController new];
+//        person.hidesBottomBarWhenPushed = YES;
+//        [self.navigationController pushViewController:person animated:YES];
+//    }
+//
+//
+//}
+
+
+
+#pragma mark PassWordCellDelegate
+
+-(void)messWithText:(NSString *)text ByIndexPath:(NSIndexPath *)indexPath{
+    PassWordModel *passModel =   _cellArr[indexPath.row];
+    passModel.cellText = text;
+    [self.table reloadData];
+    NSLog(@"text :%@ section :%ld",text,indexPath.row);
+    
+}
+
+@end
